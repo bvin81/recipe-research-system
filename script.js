@@ -22,60 +22,19 @@ class RecipeResearchSystem {
     }
     
     async loadData() {
-        try {
-            console.log('🔄 Valós receptadatok betöltése...');
-            
-            // Receptek betöltése
-            const recipesResponse = await fetch('./data/recipes_hungarian_sample.json');
-            if (!recipesResponse.ok) {
-                throw new Error(`HTTP error! status: ${recipesResponse.status}`);
-            }
-            this.recipes = await recipesResponse.json();
-            
-            // Fordítások betöltése
-            const translationsResponse = await fetch('./data/translations.json');
-            if (!translationsResponse.ok) {
-                throw new Error(`HTTP error! status: ${translationsResponse.status}`);
-            }
-            this.translations = await translationsResponse.json();
-            
-            console.log(`✅ Betöltve ${this.recipes.length} valós recept`);
-            console.log(`✅ Betöltve ${Object.keys(this.translations).length} fordítás`);
-            
-        } catch (error) {
-            console.error('❌ Adatok betöltési hiba:', error);
-            console.log('⚠️ Fallback teszt adatokra...');
-            
-            // Fallback teszt adatok
-            this.recipes = [
-                {
-                    recipeid: 1,
-                    name: "Áfonyás Joghurt",
-                    ingredients: "áfonya, cukor, joghurt, citromlé",
-                    env_score: 12.1,
-                    nutri_score: 18.9,
-                    sustainability_index: 65.2,
-                    recommendation_type: 'ingredient_based'
-                },
-                {
-                    recipeid: 2,
-                    name: "Zöldséges Leves",
-                    ingredients: "paradicsomlé, káposzta, hagyma, sárgarépa",
-                    env_score: 19.3,
-                    nutri_score: 51.3,
-                    sustainability_index: 72.1,
-                    recommendation_type: 'sustainability_optimized'
-                }
-            ];
-            
-            this.translations = {
-                'salt': 'só',
-                'sugar': 'cukor',
-                'chicken': 'csirke',
-                'tomato': 'paradicsom'
-            };
-        }
+    try {
+        console.log('🔄 Magyar receptadatok betöltése...');
+        
+        const recipesResponse = await fetch('./data/recipes_hungarian_best1000.json');
+        this.recipes = await recipesResponse.json();
+        
+        console.log(`✅ Betöltve ${this.recipes.length} magyar recept`);
+        console.log('Példa recept:', this.recipes[0].name, '-', this.recipes[0].ingredients.substring(0, 50) + '...');
+        
+    } catch (error) {
+        console.error('❌ Hiba:', error);
     }
+}
     
     setupEventListeners() {
         // Regisztráció
@@ -173,81 +132,36 @@ class RecipeResearchSystem {
             `${this.testGroup} (${groupDescriptions[this.testGroup]})`;
     }
     
-    handleSearch() {
-    let ingredients = document.getElementById('ingredient-search').value;
-    
+   handleSearch() {
+    const ingredients = document.getElementById('ingredient-search').value;
     if (!ingredients.trim()) {
         alert('Kérjük, adjon meg legalább egy hozzávalót!');
         return;
     }
     
-    // MAGYAR → ANGOL AUTOMATIKUS FORDÍTÁS
-    const quickTranslate = {
-        'csirke': 'chicken',
-        'hagyma': 'onion', 
-        'paradicsom': 'tomato',
-        'tej': 'milk',
-        'tojás': 'egg',
-        'só': 'salt',
-        'cukor': 'sugar',
-        'vaj': 'butter',
-        'liszt': 'flour',
-        'rizs': 'rice',
-        'sajt': 'cheese',
-        'olaj': 'oil',
-        'víz': 'water',
-        'bors': 'pepper',
-        'fokhagyma': 'garlic',
-        'sárgarépa': 'carrot',
-        'burgonya': 'potato',
-        'paprika': 'pepper',
-        'gomba': 'mushroom',
-        'spenót': 'spinach',
-        'brokkoli': 'broccoli',
-        'citrom': 'lemon',
-        'alma': 'apple',
-        'banán': 'banana',
-        'marhahús': 'beef',
-        'sertéshús': 'pork',
-        'hal': 'fish',
-        'káposzta': 'cabbage',
-        'zellerszár': 'celery',
-        'kukorica': 'corn',
-        'áfonya': 'blueberry',
-        'eper': 'strawberry',
-        'dió': 'nuts',
-        'mandula': 'almonds',
-        'csokoládé': 'chocolate',
-        'vanília': 'vanilla',
-        'fahéj': 'cinnamon',
-        'gyömbér': 'ginger',
-        'bazsalikom': 'basil',
-        'oregánó': 'oregano',
-        'petrezselyem': 'parsley',
-        'koriander': 'cilantro',
-        'joghurt': 'yogurt',
-        'tejszín': 'cream',
-        'krémsajt': 'cream cheese',
-        'mozzarella': 'mozzarella',
-        'cheddar': 'cheddar',
-        'parmezán': 'parmesan'
-    };
-    
-    // Fordítás alkalmazása
-    let translatedIngredients = ingredients;
-    Object.entries(quickTranslate).forEach(([hun, eng]) => {
-        const regex = new RegExp(`\\b${hun}\\b`, 'gi');
-        translatedIngredients = translatedIngredients.replace(regex, eng);
-    });
-    
-    console.log(`🔄 Keresés: "${ingredients}" → "${translatedIngredients}"`);
+    console.log(`🔍 Keresés: "${ingredients}"`);
     
     this.searchStartTime = Date.now();
-    
-    // Valós ajánló algoritmus (lefordított szavakkal)
-    const results = this.getRecommendations(translatedIngredients, this.testGroup);
-    this.displayResults(results, ingredients); // Eredeti magyar szavakat megjelenítjük
+    const results = this.getRecommendations(ingredients, this.testGroup);
+    this.displayResults(results, ingredients);
 }
+
+🎉 VÁRHATÓ EREDMÉNY:
+Keresések magyarül:
+
+✅ csirke → sok csirke recept
+✅ hagyma → sok hagyma recept
+✅ paradicsom → sok paradicsom recept
+✅ tejszín → tejszínes receptek
+
+Receptek teljesen magyarul:
+
+Név: "Csirke recept"
+Hozzávalók: "Csirke, Hagyma, Paradicsom, Só, Fekete bors, Olívaolaj"
+
+
+Kezdjük a teljes export script futtatásával! Ez a VÉGLEGES megoldás! 🚀
+Futtasd most: python complete_hungarian_export.pyRetryClaude can make mistakes. Please double-check responses.
     
     // 50-50% AJÁNLÓ STRATÉGIA (a Python kódból átvéve)
     getRecommendations(searchIngredients, testGroup, numRecommendations = 10) {
@@ -278,13 +192,13 @@ class RecipeResearchSystem {
     }
     
     filterByIngredients(ingredientList) {
-        return this.recipes.filter(recipe => {
-            const recipeIngredients = recipe.ingredients.toLowerCase();
-            return ingredientList.some(ingredient => 
-                recipeIngredients.includes(ingredient)
-            );
-        });
-    }
+    return this.recipes.filter(recipe => {
+        const recipeIngredients = recipe.ingredients.toLowerCase();
+        return ingredientList.some(ingredient => 
+            recipeIngredients.includes(ingredient.toLowerCase().trim())
+        );
+    });
+}
     
     sortBySustainability(recipes) {
         return recipes.sort((a, b) => {
