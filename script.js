@@ -1,37 +1,80 @@
-// Recipe Research System - Main Application
+// Recipe Research System - Main Application (Valós Adatokkal)
 class RecipeResearchSystem {
     constructor() {
         this.recipes = [];
         this.translations = {};
         this.currentUser = null;
         this.testGroup = null;
-        
-        // Teszt adatok (később a JSON fájlokból jönnek)
-        this.recipes = [
-            {
-                recipeid: 1,
-                name: "Áfonyás Joghurt",
-                ingredients: "áfonya, cukor, joghurt, citromlé",
-                env_score: 12.1,
-                nutri_score: 18.9,
-                sustainability_index: 65.2
-            },
-            {
-                recipeid: 2,
-                name: "Zöldséges Leves",
-                ingredients: "paradicsomlé, káposzta, hagyma, sárgarépa",
-                env_score: 19.3,
-                nutri_score: 51.3,
-                sustainability_index: 72.1
-            }
-        ];
+        this.searchStartTime = null;
         
         this.initializeApp();
     }
     
-    initializeApp() {
+    async initializeApp() {
+        // Adatok betöltése
+        await this.loadData();
+        
+        // Event listenrek
         this.setupEventListeners();
+        
+        // Felhasználó ellenőrzése
         this.checkExistingUser();
+    }
+    
+    async loadData() {
+        try {
+            console.log('🔄 Valós receptadatok betöltése...');
+            
+            // Receptek betöltése
+            const recipesResponse = await fetch('./data/recipes_sample.json');
+            if (!recipesResponse.ok) {
+                throw new Error(`HTTP error! status: ${recipesResponse.status}`);
+            }
+            this.recipes = await recipesResponse.json();
+            
+            // Fordítások betöltése
+            const translationsResponse = await fetch('./data/translations.json');
+            if (!translationsResponse.ok) {
+                throw new Error(`HTTP error! status: ${translationsResponse.status}`);
+            }
+            this.translations = await translationsResponse.json();
+            
+            console.log(`✅ Betöltve ${this.recipes.length} valós recept`);
+            console.log(`✅ Betöltve ${Object.keys(this.translations).length} fordítás`);
+            
+        } catch (error) {
+            console.error('❌ Adatok betöltési hiba:', error);
+            console.log('⚠️ Fallback teszt adatokra...');
+            
+            // Fallback teszt adatok
+            this.recipes = [
+                {
+                    recipeid: 1,
+                    name: "Áfonyás Joghurt",
+                    ingredients: "áfonya, cukor, joghurt, citromlé",
+                    env_score: 12.1,
+                    nutri_score: 18.9,
+                    sustainability_index: 65.2,
+                    recommendation_type: 'ingredient_based'
+                },
+                {
+                    recipeid: 2,
+                    name: "Zöldséges Leves",
+                    ingredients: "paradicsomlé, káposzta, hagyma, sárgarépa",
+                    env_score: 19.3,
+                    nutri_score: 51.3,
+                    sustainability_index: 72.1,
+                    recommendation_type: 'sustainability_optimized'
+                }
+            ];
+            
+            this.translations = {
+                'salt': 'só',
+                'sugar': 'cukor',
+                'chicken': 'csirke',
+                'tomato': 'paradicsom'
+            };
+        }
     }
     
     setupEventListeners() {
@@ -137,30 +180,90 @@ class RecipeResearchSystem {
             return;
         }
         
-        // Egyszerű keresés a teszt adatokban
-        const results = this.getRecommendations(ingredients);
+        this.searchStartTime = Date.now();
+        
+        // Valós ajánló algoritmus (50-50% stratégia)
+        const results = this.getRecommendations(ingredients, this.testGroup);
         this.displayResults(results, ingredients);
     }
     
-    getRecommendations(searchIngredients) {
+    // 50-50% AJÁNLÓ STRATÉGIA (a Python kódból átvéve)
+    getRecommendations(searchIngredients, testGroup, numRecommendations = 10) {
         const ingredientList = searchIngredients.toLowerCase().split(',').map(s => s.trim());
         
-        // Egyszerű matching
-        const matched = this.recipes.filter(recipe => {
+        // 1. Összetevő alapú szűrés
+        const ingredientBased = this.filterByIngredients(ingredientList);
+        
+        // 2. Fenntarthatóság alapú rendezés
+        const sustainabilityOptimized = this.sortBySustainability([...ingredientBased]);
+        
+        // 3. Csoport specifikus logika
+        switch(testGroup) {
+            case 'A': // Control - csak ingredient based, random sorrendben
+                return this.shuffleArray([...ingredientBased]).slice(0, numRecommendations);
+                
+            case 'B': // Health + Environment
+            case 'C': // B + XAI
+                return this.createBalancedMix(
+                    ingredientBased, 
+                    sustainabilityOptimized, 
+                    numRecommendations
+                );
+                
+            default:
+                return ingredientBased.slice(0, numRecommendations);
+        }
+    }
+    
+    filterByIngredients(ingredientList) {
+        return this.recipes.filter(recipe => {
             const recipeIngredients = recipe.ingredients.toLowerCase();
             return ingredientList.some(ingredient => 
                 recipeIngredients.includes(ingredient)
             );
         });
+    }
+    
+    sortBySustainability(recipes) {
+        return recipes.sort((a, b) => {
+            // Magasabb sustainability_index = jobb
+            return (b.sustainability_index || 0) - (a.sustainability_index || 0);
+        });
+    }
+    
+    // 50-50% STRATÉGIA implementáció
+    createBalancedMix(ingredientBased, sustainabilityOptimized, numRecommendations) {
+        const halfSize = Math.floor(numRecommendations / 2);
         
-        return matched.length > 0 ? matched : this.recipes; // Ha nincs találat, mutasd mind
+        // Fele ingredient-based, fele sustainability-optimized
+        const ingredientPart = ingredientBased.slice(0, halfSize);
+        const sustainabilityPart = sustainabilityOptimized
+            .filter(recipe => !ingredientPart.some(r => r.recipeid === recipe.recipeid))
+            .slice(0, numRecommendations - halfSize);
+        
+        // Keverés és típus megjelölése
+        const mixed = [
+            ...ingredientPart.map(r => ({...r, recommendation_type: 'ingredient_based'})),
+            ...sustainabilityPart.map(r => ({...r, recommendation_type: 'sustainability_optimized'}))
+        ];
+        
+        return this.shuffleArray(mixed);
+    }
+    
+    shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
     }
     
     displayResults(recipes, searchIngredients) {
         const resultsDiv = document.getElementById('search-results');
         
         if (recipes.length === 0) {
-            resultsDiv.innerHTML = '<p>Nem találtunk receptet ezekkel a hozzávalókkal.</p>';
+            resultsDiv.innerHTML = '<p>Nem találtunk receptet ezekkel a hozzávalókkal. Próbálja meg: csirke, paradicsom, tej, tojás, liszt, hagyma</p>';
             return;
         }
         
@@ -177,11 +280,14 @@ class RecipeResearchSystem {
         const showScores = ['B', 'C'].includes(this.testGroup);
         const showXAI = this.testGroup === 'C';
         
+        // Magyar fordítás alkalmazása
+        const translatedIngredients = this.translateIngredients(recipe.ingredients);
+        
         return `
             <div class="recipe-card">
                 <div class="recipe-name">${recipe.name}</div>
                 <div class="recipe-ingredients">
-                    <strong>Hozzávalók:</strong> ${recipe.ingredients}
+                    <strong>Hozzávalók:</strong> ${translatedIngredients}
                 </div>
                 
                 ${showScores ? `
@@ -206,38 +312,99 @@ class RecipeResearchSystem {
                 ` : ''}
                 
                 <button class="select-recipe-btn" 
-                        onclick="app.selectRecipe(${recipe.recipeid}, '${recipe.name}', ${index + 1})">
+                        onclick="app.selectRecipe(${recipe.recipeid}, '${recipe.name?.replace(/'/g, "\\'")}', ${index + 1}, '${searchIngredients}')">
                     ✅ Ezt választom
                 </button>
             </div>
         `;
     }
     
-    generateXAIExplanation(recipe) {
-        const sustainability = recipe.sustainability_index || 0;
+    // Magyar fordítás alkalmazása
+    translateIngredients(ingredients) {
+        if (!ingredients || !this.translations) return ingredients;
         
-        if (sustainability >= 70) {
-            return "Ez egy kiváló fenntartható választás magas tápértékkel és alacsony környezeti hatással.";
-        } else if (sustainability >= 50) {
-            return "Jó egyensúly a fenntarthatóság és az egészség között.";
-        } else {
-            return "Alapvető recept, amely még fejleszthető fenntarthatósági szempontból.";
-        }
+        let translated = ingredients;
+        
+        // Minden fordítást alkalmazunk
+        Object.entries(this.translations).forEach(([english, hungarian]) => {
+            // Teljes szavak cseréje (word boundary)
+            const regex = new RegExp(`\\b${english}\\b`, 'gi');
+            translated = translated.replace(regex, hungarian);
+        });
+        
+        return translated;
     }
     
-    selectRecipe(recipeId, recipeName, rank) {
-        console.log('Választott recept:', {
+    // XAI MAGYARÁZATOK (a meglévő Python logika alapján)
+    generateXAIExplanation(recipe) {
+        if (!recipe) return "Nincs elérhető magyarázat.";
+        
+        const sustainability = recipe.sustainability_index || 0;
+        const envScore = recipe.env_score || 0;
+        const nutriScore = recipe.nutri_score || 0;
+        const recType = recipe.recommendation_type || 'unknown';
+        
+        let explanation = "";
+        
+        // Ajánlás típusa alapján
+        if (recType === 'sustainability_optimized') {
+            explanation += "🌱 Fenntarthatóság alapján ajánlott: ";
+        } else if (recType === 'ingredient_based') {
+            explanation += "🎯 Összetevők alapján ajánlott: ";
+        }
+        
+        // Pontszámok alapján
+        if (sustainability >= 75) {
+            explanation += "Kiváló fenntarthatósági és egészségügyi értékek.";
+        } else if (sustainability >= 50) {
+            explanation += "Jó egyensúly a fenntarthatóság és egészség között.";
+        } else if (sustainability >= 25) {
+            explanation += "Közepes fenntarthatósági érték.";
+        } else {
+            explanation += "Alapvető recept, fejleszthető fenntarthatósági szempontból.";
+        }
+        
+        // Specifikus indokok
+        if (envScore < 30) {
+            explanation += " Alacsony környezeti hatás.";
+        }
+        if (nutriScore > 50) {
+            explanation += " Magas tápértékű.";
+        }
+        
+        return explanation;
+    }
+    
+    selectRecipe(recipeId, recipeName, rank, searchIngredients) {
+        const decisionTime = (Date.now() - this.searchStartTime) / 1000;
+        
+        const choiceData = {
             userId: this.currentUser.id,
             testGroup: this.testGroup,
             recipeId: recipeId,
             recipeName: recipeName,
-            rank: rank
-        });
+            rank: rank,
+            searchIngredients: searchIngredients,
+            decisionTime: decisionTime,
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('Választott recept:', choiceData);
+        
+        // Helyi tárolás
+        this.saveChoiceLocally(choiceData);
         
         // Itt később Google Forms submission lesz
         alert(`Köszönjük! Választott recept: ${recipeName}`);
         
         this.showSection('thank-you-section');
+    }
+    
+    saveChoiceLocally(choiceData) {
+        const choices = JSON.parse(localStorage.getItem('userChoices') || '[]');
+        choices.push(choiceData);
+        localStorage.setItem('userChoices', JSON.stringify(choices));
+        console.log('Választás mentve helyileg:', choiceData);
     }
     
     showSection(sectionId) {
