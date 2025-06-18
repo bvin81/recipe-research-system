@@ -174,18 +174,80 @@ class RecipeResearchSystem {
     }
     
     handleSearch() {
-        const ingredients = document.getElementById('ingredient-search').value;
-        if (!ingredients.trim()) {
-            alert('Kérjük, adjon meg legalább egy hozzávalót!');
-            return;
-        }
-        
-        this.searchStartTime = Date.now();
-        
-        // Valós ajánló algoritmus (50-50% stratégia)
-        const results = this.getRecommendations(ingredients, this.testGroup);
-        this.displayResults(results, ingredients);
+    let ingredients = document.getElementById('ingredient-search').value;
+    
+    if (!ingredients.trim()) {
+        alert('Kérjük, adjon meg legalább egy hozzávalót!');
+        return;
     }
+    
+    // MAGYAR → ANGOL AUTOMATIKUS FORDÍTÁS
+    const quickTranslate = {
+        'csirke': 'chicken',
+        'hagyma': 'onion', 
+        'paradicsom': 'tomato',
+        'tej': 'milk',
+        'tojás': 'egg',
+        'só': 'salt',
+        'cukor': 'sugar',
+        'vaj': 'butter',
+        'liszt': 'flour',
+        'rizs': 'rice',
+        'sajt': 'cheese',
+        'olaj': 'oil',
+        'víz': 'water',
+        'bors': 'pepper',
+        'fokhagyma': 'garlic',
+        'sárgarépa': 'carrot',
+        'burgonya': 'potato',
+        'paprika': 'pepper',
+        'gomba': 'mushroom',
+        'spenót': 'spinach',
+        'brokkoli': 'broccoli',
+        'citrom': 'lemon',
+        'alma': 'apple',
+        'banán': 'banana',
+        'marhahús': 'beef',
+        'sertéshús': 'pork',
+        'hal': 'fish',
+        'káposzta': 'cabbage',
+        'zellerszár': 'celery',
+        'kukorica': 'corn',
+        'áfonya': 'blueberry',
+        'eper': 'strawberry',
+        'dió': 'nuts',
+        'mandula': 'almonds',
+        'csokoládé': 'chocolate',
+        'vanília': 'vanilla',
+        'fahéj': 'cinnamon',
+        'gyömbér': 'ginger',
+        'bazsalikom': 'basil',
+        'oregánó': 'oregano',
+        'petrezselyem': 'parsley',
+        'koriander': 'cilantro',
+        'joghurt': 'yogurt',
+        'tejszín': 'cream',
+        'krémsajt': 'cream cheese',
+        'mozzarella': 'mozzarella',
+        'cheddar': 'cheddar',
+        'parmezán': 'parmesan'
+    };
+    
+    // Fordítás alkalmazása
+    let translatedIngredients = ingredients;
+    Object.entries(quickTranslate).forEach(([hun, eng]) => {
+        const regex = new RegExp(`\\b${hun}\\b`, 'gi');
+        translatedIngredients = translatedIngredients.replace(regex, eng);
+    });
+    
+    console.log(`🔄 Keresés: "${ingredients}" → "${translatedIngredients}"`);
+    
+    this.searchStartTime = Date.now();
+    
+    // Valós ajánló algoritmus (lefordított szavakkal)
+    const results = this.getRecommendations(translatedIngredients, this.testGroup);
+    this.displayResults(results, ingredients); // Eredeti magyar szavakat megjelenítjük
+}
     
     // 50-50% AJÁNLÓ STRATÉGIA (a Python kódból átvéve)
     getRecommendations(searchIngredients, testGroup, numRecommendations = 10) {
