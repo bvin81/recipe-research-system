@@ -26,7 +26,7 @@ class RecipeResearchSystem {
             console.log('🔄 Valós receptadatok betöltése...');
             
             // Receptek betöltése
-            const recipesResponse = await fetch('./data/recipes_sample.json');
+            const recipesResponse = await fetch('./data/recipes_hungarian_sample.json');
             if (!recipesResponse.ok) {
                 throw new Error(`HTTP error! status: ${recipesResponse.status}`);
             }
