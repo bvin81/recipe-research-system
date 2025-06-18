@@ -1,5 +1,5 @@
 // Recipe Research System - LEGFRISSEBB TELJES VERZIÓ
-// 1000 magyar recept + minden továbbfejlesztés
+// 1000 magyar recept + minden továbbfejlesztés + JAVÍTOTT KÖRNYEZETI LOGIKA
 
 class RecipeResearchSystem {
     constructor() {
@@ -13,7 +13,7 @@ class RecipeResearchSystem {
     
     async initializeApp() {
         console.log('🚀 Recipe Research System - Legfrissebb verzió indítása...');
-        console.log('📅 Verzió: 2025.06.18 - Magyar receptekkel');
+        console.log('📅 Verzió: 2025.06.18 - Magyar receptekkel + Javított környezeti logika');
         
         // Adatok betöltése (valós vagy fallback)
         await this.loadEnhancedData();
@@ -472,6 +472,7 @@ class RecipeResearchSystem {
         return finalResults;
     }
     
+    // ✅ JAVÍTOTT: Rendezési stratégia környezetbarát logikával
     applySortingStrategy(recipes) {
         switch (this.testGroup) {
             case 'A':
@@ -481,13 +482,48 @@ class RecipeResearchSystem {
                 
             case 'B':
             case 'C':
-                // Fenntarthatósági csoportok: fenntarthatóság szerint rendezés
-                console.log('🌱 B/C csoport: fenntarthatóság szerint rendezés');
-                return recipes.sort((a, b) => (b.sustainability_index || 0) - (a.sustainability_index || 0));
+                // ✅ JAVÍTOTT: Fenntarthatósági csoportok: környezetbarát rendezés
+                console.log('🌱 B/C csoport: környezetbarát rendezés');
+                return this.sortRecipesBySustainability(recipes);
                 
             default:
                 return recipes;
         }
+    }
+    
+    // ✅ ÚJ: Környezetbarát rendezés (alacsony env_score = jobb)
+    sortRecipesBySustainability(recipes) {
+        return recipes.sort((a, b) => {
+            // 1. Elsődleges: fenntarthatóság index (magasabb = jobb)
+            const sustainabilityDiff = (b.sustainability_index || 0) - (a.sustainability_index || 0);
+            if (Math.abs(sustainabilityDiff) > 5) {
+                return sustainabilityDiff;
+            }
+            
+            // 2. Másodlagos: környezeti pontszám (ALACSONYABB = jobb!)
+            const envDiff = (a.env_score || 0) - (b.env_score || 0);
+            if (Math.abs(envDiff) > 2) {
+                return envDiff;
+            }
+            
+            // 3. Harmadlagos: táplálkozási pontszám (magasabb = jobb)
+            return (b.nutri_score || 0) - (a.nutri_score || 0);
+        });
+    }
+    
+    // ✅ ÚJ: Környezeti színkódolás (alacsony = zöld)
+    getEnvironmentalColor(score) {
+        // Alacsony pontszám = jó a környezetnek = zöld
+        if (score <= 20) return '#4CAF50';      // Zöld - környezetbarát
+        if (score <= 50) return '#FF9800';      // Narancs - közepes
+        return '#F44336';                       // Piros - környezetszennyező
+    }
+    
+    // ✅ ÚJ: Környezeti címkék
+    getEnvironmentalLabel(score) {
+        if (score <= 20) return 'Környezetbarát';
+        if (score <= 50) return 'Közepes hatás';
+        return 'Nagy környezeti terhelés';
     }
     
     shuffleArray(array) {
@@ -593,16 +629,20 @@ class RecipeResearchSystem {
         return highlighted;
     }
     
+    // ✅ JAVÍTOTT: Pontszám szekció környezeti színezéssel
     generateScoreSection(recipe) {
         const sustainabilityLevel = this.getSustainabilityLevel(recipe.sustainability_index || 0);
+        const envColor = this.getEnvironmentalColor(recipe.env_score || 0);
+        const envLabel = this.getEnvironmentalLabel(recipe.env_score || 0);
         
         return `
             <div class="sustainability-scores" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid ${sustainabilityLevel.color};">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
-                    <div class="score env-score" style="font-size: 0.9rem;">
-                        🌍 Környezeti: <strong>${(recipe.env_score || 0).toFixed(1)}</strong>
+                    <div class="score env-score" style="font-size: 0.9rem; padding: 0.5rem; background: ${envColor}; color: white; border-radius: 4px; text-align: center;">
+                        🌍 Környezeti: <strong>${(recipe.env_score || 0).toFixed(1)}</strong><br>
+                        <small style="font-size: 0.8rem;">${envLabel}</small>
                     </div>
-                    <div class="score nutri-score" style="font-size: 0.9rem;">
+                    <div class="score nutri-score" style="font-size: 0.9rem; padding: 0.5rem; background: #28a745; color: white; border-radius: 4px; text-align: center;">
                         💚 Táplálkozási: <strong>${(recipe.nutri_score || 0).toFixed(1)}</strong>
                     </div>
                 </div>
@@ -633,6 +673,7 @@ class RecipeResearchSystem {
         `;
     }
     
+    // ✅ JAVÍTOTT: AI magyarázat környezeti logikával
     generateDetailedXAI(recipe) {
         const sustainability = recipe.sustainability_index || 0;
         const envScore = recipe.env_score || 0;
@@ -641,10 +682,10 @@ class RecipeResearchSystem {
         
         let explanation = "";
         
-        // Fenntarthatósági értékelés
+        // ✅ JAVÍTOTT Fenntarthatósági értékelés
         if (sustainability >= 75) {
             explanation += "🌟 <strong>Kiváló fenntartható választás!</strong> ";
-            if (envScore < 15) {
+            if (envScore <= 20) {  // ← JAVÍTVA: alacsony = jó
                 explanation += "Rendkívül alacsony környezeti hatással készül. ";
             }
             if (nutriScore > 60) {
@@ -653,7 +694,7 @@ class RecipeResearchSystem {
             explanation += "Ez a recept kiválóan illeszkedik a fenntartható életmódhoz. ";
         } else if (sustainability >= 60) {
             explanation += "✅ <strong>Jó fenntartható választás.</strong> ";
-            if (envScore < 25) {
+            if (envScore <= 30) {  // ← JAVÍTVA: alacsony = jó
                 explanation += "Viszonylag alacsony környezeti hatás. ";
             }
             if (nutriScore > 45) {
@@ -662,22 +703,22 @@ class RecipeResearchSystem {
             explanation += "Kiegyensúlyozott opció a fenntarthatóság és az íz között. ";
         } else if (sustainability >= 40) {
             explanation += "⚖️ <strong>Közepes fenntarthatóságú választás.</strong> ";
-            if (envScore > 40) {
+            if (envScore > 50) {  // ← JAVÍTVA: magas = rossz
                 explanation += "Magasabb környezeti hatással jár. ";
             }
             explanation += "Alkalmanként fogyasztva elfogadható. ";
         } else {
             explanation += "⚠️ <strong>Kevésbé fenntartható, de ízletes választás.</strong> ";
-            if (envScore > 50) {
+            if (envScore > 60) {  // ← JAVÍTVA: magas = rossz
                 explanation += "Jelentős környezeti hatással jár. ";
             }
             explanation += "Ritkábban fogyasztva élvezhető. ";
         }
         
-        // Kategória specifikus tanácsok
+        // ✅ JAVÍTOTT Kategória specifikus tanácsok
         switch (category) {
             case 'főétel':
-                if (sustainability < 50) {
+                if (envScore > 40) {  // ← JAVÍTVA: magas env_score = rossz
                     explanation += "<br><em>💡 Tipp: Próbálja növényi köretekkel kombinálni a környezeti hatás csökkentéséhez.</em>";
                 } else {
                     explanation += "<br><em>👍 Remek főétel választás a fenntartható táplálkozáshoz!</em>";
@@ -693,7 +734,7 @@ class RecipeResearchSystem {
                 explanation += "<br><em>🍲 Tápláló és fenntartható leves opció!</em>";
                 break;
             case 'desszert':
-                if (sustainability > 60) {
+                if (envScore <= 30) {  // ← JAVÍTVA: alacsony = jó
                     explanation += "<br><em>🍰 Fenntartható desszert - nyugodt szívvel élvezhető!</em>";
                 } else {
                     explanation += "<br><em>🍰 Édes finomság - mértékkel fogyasztva.</em>";
@@ -816,7 +857,7 @@ let app;
 document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log('🌟 Recipe Research System - Legfrissebb verzió indítása...');
-        console.log('📅 Verzió: 2025.06.18 - 1000 Magyar Recept + Továbbfejlesztések');
+        console.log('📅 Verzió: 2025.06.18 - 1000 Magyar Recept + JAVÍTOTT KÖRNYEZETI LOGIKA');
         app = new RecipeResearchSystem();
     } catch (error) {
         console.error('❌ Alkalmazás indítási hiba:', error);
